@@ -11,6 +11,7 @@ function widget:GetInfo()
 end
 
 --[[-------------------------------------------------------------------
+
 	By default, this widget will notify your allies via map ping when you:
 
 	 * start teching up to any T2 factory
@@ -20,6 +21,7 @@ end
 	Notifications will only be sent once per game, regardless of factory type
 
 	Modify the config below to customize any of the messages/behaviours
+
 --]]-------------------------------------------------------------------
 
 -- Config
