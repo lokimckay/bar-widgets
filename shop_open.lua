@@ -16,7 +16,7 @@ end
 
 	 * start teching up to any T2 factory
 	 * finish teching (will offer to sell them a constructor and specify metal cost)
-	 * start reclaiming your factory (and will remind them to buy a constructor)
+	 * start reclaiming your factory (will remind them to buy a constructor)
 
 	Notifications will only be sent once per game, regardless of factory type
 
@@ -87,10 +87,11 @@ local function ShouldNotify(messageType, unitDefID, unitTeam)
 	return unitDef.isFactory and unitDef.customParams.techlevel == "2"
 end
 
--- Returns either "Bots" or "Veh" depending on the factory type
+-- Returns either "Bots" / "Veh" / "Air" depending on the factory type
 local function GetShortName(name)
 	if name == "Advanced Bot Lab" then return "Bots"
 	elseif name == "Advanced Vehicle Plant" then return "Veh"
+  elseif name == "Advanced Aircraft Plant" then return "Air"
 	else return name
 	end
 end
