@@ -40,7 +40,7 @@ local mapMarker = {
 }
 
 -- Messages 
--- Available placeholders: <PLAYER>, <LVL> (2/3), <FACTION> (arm/core), <TYPE> (bots/veh/air), <COST> (metal)
+-- Available placeholders: <PLAYER>, <LVL> (2/3), <FACTION> (arm/core), <TYPE> (bots/veh/air/sea), <COST> (metal)
 local messages = {
 	start = "Teching (T<LVL> <FACTION> <TYPE>)",
 	finish = "Selling T<LVL> <FACTION> <TYPE> (<COST>m)",
@@ -87,11 +87,12 @@ local function ShouldNotify(messageType, unitDefID, unitTeam)
 	return unitDef.isFactory and unitDef.customParams.techlevel == "2"
 end
 
--- Returns either "Bots" / "Veh" / "Air" depending on the factory type
+-- Returns either "Bots" / "Veh" / "Air" / "Sea" depending on the factory type
 local function GetShortName(name)
 	if name == "Advanced Bot Lab" then return "Bots"
 	elseif name == "Advanced Vehicle Plant" then return "Veh"
   elseif name == "Advanced Aircraft Plant" then return "Air"
+	elseif name == "Advanced Shipyard" then return "Sea"
 	else return name
 	end
 end
