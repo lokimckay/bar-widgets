@@ -29,8 +29,9 @@ local offerToSell = true -- offer to sell T2 constructors to your allies
 local notifyStart = true -- notify your team when you start teching
 local notifyFinish = true -- notify your team when you finish teching
 local notifyReclaim = true -- notify your team when you start reclaiming your factory
+local cancelIfAllyTechs = true -- cancel all notifications if an ally finishes teching before you
 
--- Marker toggles 
+-- Marker toggles
 -- true = map ping marker
 -- false = team chat message
 local mapMarker = {
@@ -64,13 +65,25 @@ local function DebugLog(message)
 	if debugMode then Spring.Echo(logPrefix .. tostring(message)) end
 end
 
+-- Returns true if the given unitDefID is a unit of interest (should trigger a notification)
+local function IsTechFactory(unitDefID)
+	-- Check if unitDefID is a factory of interest
+	local unitDef = UnitDefs[unitDefID]
+	if unitDefID == nil or unitDef == nil then return false end
+	return unitDef.isFactory and unitDef.customParams.techlevel == "2"
+end
+
+-- Returns true if the given unitTeam is owned by this player
+local function IsOwnedByThisPlayer(unitTeam)
+	return Spring.GetPlayerInfo(Spring.GetMyPlayerID()) == Spring.GetPlayerInfo(unitTeam)
+end
+
 -- Returns true if the given message has not already been sent,
 -- and the unitDefID is a factory of interest according to the config
 local function ShouldNotify(messageType, unitDefID, unitTeam)
 
 	-- Check if the unit is owned by this player
-	local ownedByThisPlayer = Spring.GetPlayerInfo(Spring.GetMyPlayerID()) == Spring.GetPlayerInfo(unitTeam)
-	if not ownedByThisPlayer then return false end
+	if not IsOwnedByThisPlayer(unitTeam) then return false end
 
 	-- Check if message has already been sent
 	if messagesSent[messageType] then return false end
@@ -81,10 +94,7 @@ local function ShouldNotify(messageType, unitDefID, unitTeam)
 	elseif messageType == "reclaim" and not notifyReclaim then return false
 	end
 
-	-- Check if unitDefID is a factory of interest
-	local unitDef = UnitDefs[unitDefID]
-	if unitDefID == nil or unitDef == nil then return false end
-	return unitDef.isFactory and unitDef.customParams.techlevel == "2"
+	return IsTechFactory(unitDefID)
 end
 
 -- Returns either "Bots" / "Veh" / "Air" / "Sea" depending on the factory type
@@ -139,6 +149,15 @@ local function AddMarker(unitID, message, messageType)
 	Spring.MarkerAddPoint(x, y, z + offset, message)
 end
 
+-- Returns true if the given message type is the last message to be sent
+local function IsLastMessage(messageType)
+	if notifyReclaim then return messageType == "reclaim"
+	elseif notifyFinish then return messageType == "finish"
+	elseif notifyStart then return messageType == "start"
+	else return false
+	end
+end
+
 -- Sends a message to the team chat
 local function SendMessage(message)
 	local playerName = Spring.GetPlayerInfo(Spring.GetMyPlayerID())
@@ -158,6 +177,20 @@ local function Notify(messageType, rawMessage, unitID, unitDefID, unitTeam)
 	
 	DebugLog("Sent message: "..message)
 	messagesSent[messageType] = true
+	
+	if IsLastMessage(messageType) then
+		DebugLog("All notifications sent, disabling widget")
+		widgetHandler:RemoveWidget()
+	end
+end
+
+-- Disables all notifications if another ally has already teched
+local function CheckIfAllyTeched(unitID, unitDefID, unitTeam)
+	if IsOwnedByThisPlayer(unitTeam) then return end -- Don't bother if we own the unit that was just built
+	if IsTechFactory(unitDefID) then 
+		DebugLog("Ally has teched, disabling widget")
+		widgetHandler:RemoveWidget()
+	end
 end
 
 -- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#UnitCreated
@@ -169,6 +202,7 @@ end
 
 -- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#UnitFinished
 function widget:UnitFinished(unitID, unitDefID, unitTeam)
+	if cancelIfAllyTechs then CheckIfAllyTeched(unitID, unitDefID, unitTeam) end
 	if not messagesSent["start"] and notifyStart then return end -- Don't bother if we haven't started teching yet
 	if ShouldNotify("finish", unitDefID, unitTeam) then
 		Notify("finish", offerToSell and messages["finish"] or messages["finishNoSell"], unitID, unitDefID, unitTeam)
@@ -192,6 +226,7 @@ end
 
 -- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#Initialize
 function widget:Initialize()
+	if(Spring.IsReplay() or Spring.GetSpectatingState()) then widgetHandler:RemoveWidget() end -- Disable the widget if spectating
 	DebugLog(widgetName .. " widget enabled")
 end
 
