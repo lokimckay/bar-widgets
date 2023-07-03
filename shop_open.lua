@@ -146,7 +146,7 @@ local function AddMarker(unitID, message, messageType)
 	elseif messageType == "finish" then offset = -50
 	end
 
-	Spring.MarkerAddPoint(x, y, z + offset, message)
+	Spring.MarkerAddPoint(x, y, z + offset, message, false)
 end
 
 -- Returns true if the given message type is the last message to be sent
