@@ -75,6 +75,7 @@ end
 
 -- Returns true if the given unitTeam is owned by this player
 local function IsOwnedByThisPlayer(unitTeam)
+	if unitTeam == nil then return false end
 	return Spring.GetPlayerInfo(Spring.GetMyPlayerID()) == Spring.GetPlayerInfo(unitTeam)
 end
 
