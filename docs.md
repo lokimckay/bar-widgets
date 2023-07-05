@@ -1,10 +1,16 @@
-## Links
+## Official widgets
+
+https://github.com/beyond-all-reason/Beyond-All-Reason/blob/f087279c7c1befcd905f1dcbd496630133e1c2d4/luaui/Widgets
+
+
+## Docs
 
 - https://springrts.com/wiki/Lua:Main
 - https://springrts.com/wiki/Lua_UnsyncedCtrl
 - https://springrts.com/wiki/Lua_UnsyncedRead
 - https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html
 - https://springrts.com/wiki/Lua:Callins
+- gl.*** - https://springrts.com/wiki/Lua_OpenGL_Api
 
 ## Debugging
 
@@ -43,3 +49,58 @@ https://github.com/beyond-all-reason/Beyond-All-Reason/blob/77c82d5c27d573681255
 WG is also defined there: 
 https://github.com/beyond-all-reason/Beyond-All-Reason/blob/77c82d5c27d573681255e5a41c23db029746daef/luaui/barwidgets.lua#LL75C38-L75C38
 ```
+
+## widgetHandler:AddAction
+
+https://github.com/beyond-all-reason/Beyond-All-Reason/blob/f087279c7c1befcd905f1dcbd496630133e1c2d4/luaui/actions.lua#L59
+
+```lua
+widgetHandler:AddAction("custom_keybind_name", FunctionName, arguments, types)
+```
+
+### Types
+
+https://github.com/beyond-all-reason/Beyond-All-Reason/blob/f087279c7c1befcd905f1dcbd496630133e1c2d4/luaui/actions.lua#L25
+
+- text "t"
+- keyPress "p"
+- keyRepeat "R"
+- keyRelease "r"
+
+Can combine them together "pR"
+
+## Keybinds
+
+https://springrts.com/wiki/Uikeys.txt
+https://wiki.libsdl.org/SDL2/SDLKeycodeLookup
+
+
+## Keybind deprecation
+
+i don't know why your lua file didn't get converted but here's how you can make it do so. 
+- First, make sure your keybinds are set to custom ingame.
+- Close the game
+- Make sure your bar_hotkeys_custom.lua file is in your data directory
+- Open springsettings.cfg (in your data folder) and find the line with KeybindingFile
+- Set it to KeybindingFile = bar_hotkeys_custom.lua
+- If you have a uikeys.txt file, delete or rename it
+- Launch the game, and start a skirmish
+
+
+## DrawUnitShapeGL4
+
+DrawUnitShapeGL4(unitDefID, px, py, pz, rotationY, alpha, teamID, teamcoloroverride, highlight)
+
+Documentation for DrawUnitShapeGL4:
+		unitDefID: which unitDef do you want to draw
+	px, py, py: where in the world to do you want to draw it
+	rotationY: Angle in radians on how much to rotate the unit around Y,
+		0 means it faces south, (+Z),
+		pi/2 points west (-X)
+		-pi/2 points east
+	alpha: the transparency level of the unit
+	teamID: which teams teamcolor should this unit get, leave nil if you want to keep the original teamID
+	teamcoloroverride: much we should mix the teamcolor into the model color [0-1]
+	highlight: how much we should add a highlighting animation to the unit (blends white with [0-1])
+	returns: a unique handler ID number that you should store and call StopDrawUnitGL4(uniqueID) with to stop drawing it
+	note that widgets are responsible for stopping the drawing of every unit that they submit!
