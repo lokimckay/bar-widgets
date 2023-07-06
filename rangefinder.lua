@@ -47,7 +47,7 @@ end
 -- Config
 local lineWidth = 2
 local lineColor = { 1, 0, 0, 0.55 } -- { r, g, b, a }
-local textColor = { 1, 1, 1, 1 } 	-- { r, g, b, a }
+local textColor = { 1, 1, 1, 1 } -- { r, g, b, a }
 local textSize = 16
 local textOffset = 35
 local drawUnitGhost = true -- Draw a ghost of the selected unit at the cursor position
@@ -139,7 +139,7 @@ local function GetWeaponRanges(unitDefID)
     end
   end
 
-  -- ground ranges are used for sorting if config is set to "maxRange",
+  -- ground ranges are used for sorting if config is set to "maxGroundRange",
   -- but still need to display air ranges if AA unit ghost is displayed
   return ranges, groundRanges 
   
