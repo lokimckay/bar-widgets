@@ -7,6 +7,7 @@ https://github.com/beyond-all-reason/Beyond-All-Reason/blob/f087279c7c1befcd905f
 - https://springrts.com/wiki/Lua:Main
 - https://springrts.com/wiki/Lua_UnitDefs
 - https://springrts.com/wiki/Lua_UnsyncedCtrl
+- https://springrts.com/wiki/Lua_SyncedRead
 - https://springrts.com/wiki/Lua_UnsyncedRead
 - https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html
 - https://springrts.com/wiki/Lua:Callins

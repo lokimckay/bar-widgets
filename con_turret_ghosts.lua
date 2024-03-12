@@ -12,15 +12,15 @@ end
 
 --[[-------------------------------------------------------------------
 
-  This widget shows ghost outlines of construction turrets after they disappear from LoS
-  I don't know why engine doesn't do this already, maybe an oversight?
+This widget shows ghost outlines of construction turrets after they disappear from LoS
+I don't know why engine doesn't do this already, maybe an oversight?
 
-  References
-    * Unit Nano Ghost by Tom Fyuri 
-    https://github.com/TomFyuri/BAR-Widgets/blob/main/unit_show_nanos.lua
+References
+* Unit Nano Ghost by Tom Fyuri 
+https://github.com/TomFyuri/BAR-Widgets/blob/main/unit_show_nanos.lua
 
-    * Ghost Radar GL4 by very_bad_soldier, Floris (GL4)
-    https://github.com/beyond-all-reason/Beyond-All-Reason/blob/master/luaui/Widgets/unit_ghostradar_gl4.lua
+* Ghost Radar GL4 by very_bad_soldier, Floris (GL4)
+https://github.com/beyond-all-reason/Beyond-All-Reason/blob/master/luaui/Widgets/unit_ghostradar_gl4.lua
 
 --]] -------------------------------------------------------------------
 
@@ -29,7 +29,7 @@ local shapeOpacity = 0.4
 local updateRate = 0.01 -- How often to check if ghosts are back in LoS (in seconds). Increase this if you get performance issues.
 
 --[[-------------------------------------------------------------------
-  Shouldn't need to edit past this point
+Shouldn't need to edit past this point
 --]] -------------------------------------------------------------------
 
 -- Debugging
@@ -38,7 +38,7 @@ local widgetName = "Con Turret Ghosts"
 local debugMode = false -- enable to print debugging messages to the console
 
 -- Vars
-local myTeamID
+local myAllyTeamID
 local sec = 0
 local addHeight = 8 -- Compensate for unit wobbling underground
 local gaiaTeamID = Spring.GetGaiaTeamID()
@@ -47,6 +47,8 @@ local unitShapes = {}
 local turrets = {}
 
 -- Spring Functions
+local spGetUnitTeam = Spring.GetUnitTeam -- https://springrts.com/wiki/Lua_SyncedRead#GetUnitTeam
+local spGetUnitAllyTeam = Spring.GetUnitAllyTeam -- https://springrts.com/wiki/Lua_SyncedRead#GetUnitAllyTeam
 local spGetUnitDefID = Spring.GetUnitDefID -- https://springrts.com/wiki/Lua_SyncedRead#GetUnitDefID
 local spGetUnitPosition = Spring.GetUnitPosition -- https://springrts.com/wiki/Lua_SyncedRead#GetUnitPosition
 local spGetUnitRotation = Spring.GetUnitRotation -- https://springrts.com/wiki/Lua_SyncedRead#GetUnitRotation
@@ -100,7 +102,6 @@ local function AddUnitShape(unitID, teamID)
     unitShapes[unitID] = WG.DrawUnitShapeGL4(unitDefID, px, py + addHeight, pz,
                                              rotationY, shapeOpacity, teamID,
                                              nil, nil)
-    return unitShapes[unitID]
 end
 
 -- Remove an existing ghost outline
@@ -114,27 +115,8 @@ end
 
 -- Remove all ghost outlines
 local function RemoveAllUnitShapes()
+    DebugLog("Removing all unit shapes")
     for unitID, _ in pairs(unitShapes) do RemoveUnitShape(unitID) end
-end
-
--- Add a candidate unit if it is a construciton turret
-local function InspectUnit(unitID, unitDefID, unitTeam)
-    if unitTeam == myTeamID then return end
-    if unitTeam == gaiaTeamID then return end
-    if includedUnitDefIDs[unitDefID] then
-        DebugLog("Tracking new turret: " .. unitID .. " on team " .. unitTeam)
-        turrets[unitID] = {
-            unitDefID = unitDefID,
-            teamID = unitTeam,
-            los = true,
-            transporter = spGetUnitTransporter(unitID),
-            pos = {spGetUnitPosition(unitID)},
-            rot = {spGetUnitRotation(unitID)}
-        }
-    elseif turrets[unitID] then
-        turrets[unitID] = nil
-    end
-    RemoveUnitShape(unitID)
 end
 
 -- If the given unitID was destroyed or moved while out of LoS, remove the ghost outline
@@ -142,7 +124,7 @@ local function RemoveOrphans(unitID)
     local turret = turrets[unitID]
     if not turret then return end
     if turret.los then return end -- ignore turrets that haven't even gone out of LoS yet
-    if spIsUnitInLos(unitID) then return end -- ignore turrets that still exist and are in LoS
+    if spIsUnitInLos(unitID, myAllyTeamID) then return end -- ignore turrets that still exist and are in LoS
     turret.los = spIsPosInLos(unpack(turret.pos)) -- check if the turret's last known position is in LoS
     if turret.los then -- if it is, remove the ghost outline
         DebugLog("Removing orphaned unit shape " .. unitID)
@@ -162,20 +144,45 @@ local function UpdateState(unitID)
     if rot and rot[1] then turret.rot = rot end
 end
 
+-- Add a candidate unit if it is a construciton turret
+local function InspectUnit(unitID, unitDefID, unitTeam, allyTeam)
+    if specFullView then return end
+    if allyTeam == myAllyTeamID then return end
+    if unitTeam == gaiaTeamID then return end
+
+    if includedUnitDefIDs[unitDefID] and not turrets[unitID] then
+        DebugLog("Tracking new turret: " .. unitID .. " on team " .. unitTeam)
+        turrets[unitID] = {
+            unitDefID = unitDefID,
+            teamID = unitTeam,
+            los = true,
+            transporter = spGetUnitTransporter(unitID),
+            pos = {spGetUnitPosition(unitID)},
+            rot = {spGetUnitRotation(unitID)}
+        }
+    elseif turrets[unitID] and unitDefID ~= turrets[unitID].unitDefID then
+        DebugLog("Turret " .. unitID .. " was replaced by another unit")
+        turrets[unitID] = nil
+    end
+    RemoveUnitShape(unitID)
+end
+
 -- Track all existing turrets (only run once on widget init)
 local function InspectAllUnits()
     local allUnits = Spring.GetAllUnits()
     for _, unitID in ipairs(allUnits) do
         local unitDefID = spGetUnitDefID(unitID)
-        local unitTeam = Spring.GetUnitTeam(unitID)
-        InspectUnit(unitID, unitDefID, unitTeam)
+        local unitTeam = spGetUnitTeam(unitID)
+        local allyTeam = spGetUnitAllyTeam(unitID)
+        InspectUnit(unitID, unitDefID, unitTeam, allyTeam)
     end
 end
 
 -- Returns the teamID of the local player
-local function GetMyTeamID()
-    local _, _, _, teamID = Spring.GetPlayerInfo(Spring.GetMyPlayerID(), false)
-    return teamID
+local function GetMyAllyTeamID()
+    local _, _, _, teamID, allyTeamID = Spring.GetPlayerInfo(
+                                            Spring.GetMyPlayerID(), false)
+    return allyTeamID
 end
 
 -- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#Initialize
@@ -183,13 +190,14 @@ function widget:Initialize()
     if not CheckCompat() then return end
     DebugLog(widgetName .. " widget enabled")
     includedUnitDefIDs = GetIncludedUnitDefIDs()
-    myTeamID = GetMyTeamID()
+    myAllyTeamID = GetMyAllyTeamID()
+    spec, specFullView = Spring.GetSpectatingState()
     InspectAllUnits()
 end
 
 -- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#PlayerChanged
 function widget:PlayerChanged()
-    myTeamID = GetMyTeamID()
+    myAllyTeamID = GetMyAllyTeamID()
     spec, specFullView = Spring.GetSpectatingState()
     if specFullView then RemoveAllUnitShapes() end
 end
@@ -199,7 +207,7 @@ function widget:Shutdown()
     if not CheckCompat() then return end
     DebugLog(widgetName .. " widget disabled")
     includedUnitDefIDs = nil
-    myTeamID = nil
+    myAllyTeamID = nil
     RemoveAllUnitShapes()
 end
 
@@ -217,16 +225,13 @@ function widget:Update(dt)
     end
 end
 
+-- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#UnitEnteredLos
 function widget:UnitEnteredLos(unitID, unitTeam, allyTeam, _unitDefID) -- provided parameter unitDefID is sometimes nil? why?
     local unitDefID = spGetUnitDefID(unitID)
-    InspectUnit(unitID, unitDefID, unitTeam)
+    InspectUnit(unitID, unitDefID, unitTeam, allyTeam)
 end
 
-function widget:UnitFinished(unitID, unitDefID, unitTeam)
-    InspectUnit(unitID, unitDefID, unitTeam)
-end
-
--- Add unit shape when unit leaves LoS
+-- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#UnitLeftLos
 function widget:UnitLeftLos(unitID, unitTeam)
     if turrets[unitID] and turrets[unitID].transporter == nil then
         turrets[unitID].los = false
@@ -234,4 +239,11 @@ function widget:UnitLeftLos(unitID, unitTeam)
     end
 end
 
+-- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#UnitFinished
+function widget:UnitFinished(unitID, unitDefID, unitTeam)
+    local allyTeam = spGetUnitAllyTeam(unitID)
+    InspectUnit(unitID, unitDefID, unitTeam, allyTeam)
+end
+
+-- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#UnitDestroyed
 function widget:UnitDestroyed(unitID, unitDefID, unitTeam) turrets[unitID] = nil end
