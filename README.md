@@ -13,3 +13,4 @@ Check out the [main community repo](https://github.com/zxbc/BAR_widgets/tree/mai
 - Hold a hotkey and hover a building -> build walls or mines that will block a spybot
 - "Dominating" notifications when a player is owning another player
 - Godcom funny shader for coms
+- Wind timeline

@@ -22,6 +22,10 @@ VFS = virtual file system
 
 ### Make instance VBO table
 
+## Engine Buffer Defs
+
+- https://github.com/beyond-all-reason/Beyond-All-Reason/blob/master/luaui/Widgets/Include/LuaShader.lua#L56
+
 ### VBO
 
 - https://beyond-all-reason.github.io/spring/ldoc/classes/VBO.html#
