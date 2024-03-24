@@ -47,6 +47,29 @@ local function dump(o)
 end
 ```
 
+Handy function to dump some unitdefs
+
+```lua
+for name, param in unitDef:pairs() do
+  DebugLog(name, param)
+end
+```
+
+Alphabetically sorted version of above
+
+```lua
+local function alphabeticUnitDefs(unitDef)
+  local sorted = {}
+  for name, param in unitDef:pairs() do
+    table.insert(sorted, name)
+  end
+  table.sort(sorted)
+  for _, name in ipairs(sorted) do
+    DebugLog(name .. " = " .. tostring(unitDef[name]))
+  end
+end
+```
+
 ## From Discord
 
 MasterBel2:
