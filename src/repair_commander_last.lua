@@ -5,6 +5,7 @@ function widget:GetInfo()
         author = "sneyed",
         date = "2024",
         license = "GNU GPL, v2 or later",
+        version = "2.0",
         layer = 0,
         enabled = true
     }
@@ -22,6 +23,7 @@ local spGetUnitIsDead = Spring.GetUnitIsDead
 local spGetUnitCommands = Spring.GetUnitCommands
 local spGiveOrderToUnit = Spring.GiveOrderToUnit
 local spGetUnitIsActive = Spring.GetUnitIsActive
+local spGetPlayerInfo = Spring.GetPlayerInfo
 
 -- Debugging
 local logPrefix = "[RCL]: "
@@ -305,7 +307,11 @@ function widget:UnitCreated(_, defID, team) Refresh(defID, team) end
 function widget:UnitDestroyed(_, defID, team) Refresh(defID, team) end
 function widget:UnitTaken(_, defID, team, newTeam) Refresh(defID, team, newTeam) end
 function widget:UnitGiven(_, defID, team, oldTeam) Refresh(defID, team, oldTeam) end
-function widget:PlayerChanged()
-    CheckCompat()
-    ForceRefresh()
+function widget:PlayerChanged(playerID)
+    local _, _, _, teamID = spGetPlayerInfo(playerID)
+    local ally = isAlly[teamID]
+    if ally then
+        CheckCompat()
+        ForceRefresh()
+    end
 end
