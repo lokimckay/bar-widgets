@@ -95,7 +95,9 @@ end
 
 -- Returns the first damaged unit near x, z within radius
 local function GetDamagedUnit(x, z, radius)
+    if not x or not z or not radius then return nil end
     local units = spGetUnitsInCylinder(x, z, radius)
+    if not units then return nil end
     for i = 1, #units do
         local uID = units[i]
         local isSelf = uID == unitID
