@@ -22,8 +22,8 @@ local spGetUnitTeam = Spring.GetUnitTeam
 local spGetUnitIsDead = Spring.GetUnitIsDead
 local spGetUnitCommands = Spring.GetUnitCommands
 local spGiveOrderToUnit = Spring.GiveOrderToUnit
-local spGetUnitIsActive = Spring.GetUnitIsActive
 local spGetPlayerInfo = Spring.GetPlayerInfo
+local spGetUnitSeparation = Spring.GetUnitSeparation
 
 -- Debugging
 local logPrefix = "[RCL]: "
@@ -48,6 +48,15 @@ local autoHeals = {}
 local allyTeamIDs = spGetAllyTeamList()
 local myTeamID = Spring.GetMyTeamID()
 local isAlly = {}
+local largestUnitRadius = 0
+
+local function GetLargestUnitRadius()
+    for unitDefID, unitDef in pairs(UnitDefs) do
+        if unitDef.radius > largestUnitRadius then
+            largestUnitRadius = unitDef.radius
+        end
+    end
+end
 
 local function GetRepairerDefs()
     for unitDefID, unitDef in pairs(UnitDefs) do
@@ -94,20 +103,23 @@ local function GetCommanders()
 end
 
 -- Returns the first damaged unit near x, z within radius
-local function GetDamagedUnit(x, z, radius)
+local function GetDamagedUnit(repairerID, x, z, radius)
     if not x or not z or not radius then return nil end
-    local units = spGetUnitsInCylinder(x, z, radius)
+    local searchRadius = radius + largestUnitRadius
+    local units = spGetUnitsInCylinder(x, z, searchRadius)
     if not units then return nil end
     for i = 1, #units do
         local uID = units[i]
         local isSelf = uID == unitID
+        local inRange = spGetUnitSeparation(uID, repairerID, false, true) <
+                            radius -- Factor in unit's model forging into the radius even though it's center is not within cylinder
         local isMyTeam = spGetUnitTeam(uID) == myTeamID
         local isDead = spGetUnitIsDead(uID)
         local uDefID = spGetUnitDefID(uID)
         local uDef = UnitDefs[uDefID]
         local isCom = uDef.customParams.iscommander
         local repairable = uDef.repairable
-        if isMyTeam and repairable and (not isDead) and (not isSelf) and
+        if inRange and isMyTeam and repairable and (not isDead) and (not isSelf) and
             (not isCom) then
             local health, maxHealth = spGetUnitHealth(uID)
             if health < maxHealth then
@@ -134,13 +146,15 @@ local function RetaskRepairer(repairerID, data)
             if canMove then -- Mobile
                 local cmdX, cmdZ, cmdRadius = cmd.params[2], cmd.params[4],
                                               cmd.params[5]
-                local damagedUnit = GetDamagedUnit(cmdX, cmdZ, cmdRadius)
+                local damagedUnit = GetDamagedUnit(repairerID, cmdX, cmdZ,
+                                                   cmdRadius)
                 if damagedUnit == nil then return end
                 spGiveOrderToUnit(repairerID, CMD.INSERT,
                                   {0, CMD.REPAIR, 0, damagedUnit}, {"alt"}) -- (prepend order to front of queue)
             else -- Immobile
                 local posX, _, posZ = spGetUnitPosition(repairerID)
-                local damagedUnit = GetDamagedUnit(posX, posZ, buildDist)
+                local damagedUnit = GetDamagedUnit(repairerID, posX, posZ,
+                                                   buildDist)
                 if damagedUnit == nil then return end
                 spGiveOrderToUnit(repairerID, CMD.REPAIR, {damagedUnit}, 0) -- (directly give order instead because of perpetual fight commands)
             end
@@ -192,6 +206,7 @@ local function Refresh(unitDefID, unitTeam, otherTeam)
 end
 
 local function ForceRefresh()
+    GetLargestUnitRadius()
     GetRepairerDefs()
     GetRepairers()
     GetCommanders()
