@@ -36,7 +36,8 @@ local function DebugLog(message)
 end
 
 -- Config
-local config = {affectImmobile = true, affectMobile = true}
+local affectMobile = true -- Apply to mobile units (cons & resbots)
+local affectImmobile = true -- Apply to immobile units (con turrets)
 
 -- Vars
 local repairerDefs = {}
@@ -61,8 +62,11 @@ end
 local function GetRepairerDefs()
     for unitDefID, unitDef in pairs(UnitDefs) do
         if unitDef.canRepair and not unitDef.isFactory and
-            not unitDef.customParams.iscommander then
-            repairerDefs[unitDefID] = true
+            not unitDef.customParams.iscommander then -- Unit can repair and is not a factory or com
+            if (unitDef.canMove == true and affectMobile == true) or
+                (unitDef.canMove == false and affectImmobile == true) then -- Unit is allowed as per config
+                repairerDefs[unitDefID] = true
+            end
         end
     end
 end
@@ -75,7 +79,7 @@ local function GetRepairers()
         local unitDefID = spGetUnitDefID(unitID)
         local unitDef = UnitDefs[unitDefID]
         local isDead = spGetUnitIsDead(unitID)
-        if repairerDefs[unitDefID] then
+        if (isDead == false) and (repairerDefs[unitDefID]) then
             repairers[unitID] = {
                 unitDef.buildDistance, unitDef.canMove, unitDefID
             }
@@ -218,104 +222,15 @@ local function CheckCompat()
     end
 end
 
--- GUI Options
-local OPTION_SPECS = {
-    {
-        configVariable = "affectImmobile",
-        name = "Immobile",
-        description = "Stop immobile units (con turrets) from repairing commanders",
-        type = "bool"
-    }, {
-        configVariable = "affectMobile",
-        name = "Mobile",
-        description = "Stop mobile units (cons & resbots) from repairing commanders",
-        type = "bool"
-    }
-}
-
-local function map(list, func)
-    local result = {}
-    for i, v in ipairs(list) do result[i] = func(v, i) end
-    return result
-end
-
-local function GetOptionId(optionSpec)
-    return widgetSlug .. "__" .. optionSpec.configVariable
-end
-
-local function GetOptionValue(optionSpec)
-    if optionSpec.type == "slider" then
-        return config[optionSpec.configVariable]
-    elseif optionSpec.type == "bool" then
-        return config[optionSpec.configVariable]
-    elseif optionSpec.type == "select" then
-        for i, v in ipairs(optionSpec.options) do
-            if config[optionSpec.configVariable] == v then return i end
-        end
-    end
-end
-
-local function SetOptionValue(optionSpec, value)
-    if optionSpec.type == "slider" then
-        config[optionSpec.configVariable] = value
-    elseif optionSpec.type == "bool" then
-        config[optionSpec.configVariable] = value
-    elseif optionSpec.type == "select" then
-        config[optionSpec.configVariable] = optionSpec.options[value]
-    end
-    CheckCompat()
-    ForceRefresh()
-end
-
-local function CreateOnChange(optionSpec)
-    return function(i, value, force) SetOptionValue(optionSpec, value) end
-end
-
-local function AddOptions(optionSpec)
-    local option = table.copy(optionSpec)
-    option.configVariable = nil
-    option.enabled = nil
-    option.id = GetOptionId(optionSpec)
-    option.widgetname = widgetName
-    option.value = GetOptionValue(optionSpec)
-    option.onchange = CreateOnChange(optionSpec)
-    return option
-end
-
-function widget:GetConfigData()
-    local result = {}
-    for _, option in ipairs(OPTION_SPECS) do
-        result[option.configVariable] = GetOptionValue(option)
-    end
-    return result
-end
-
-function widget:SetConfigData(data)
-    for _, option in ipairs(OPTION_SPECS) do
-        local configVariable = option.configVariable
-        if data[configVariable] ~= nil then
-            SetOptionValue(option, data[configVariable])
-        end
-    end
-end
-
 -- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#Initialize
 function widget:Initialize()
     DebugLog(widgetName .. " widget enabled")
     CheckCompat()
-    if WG['options'] ~= nil then
-        WG['options'].addOptions(map(OPTION_SPECS, AddOptions))
-    end
     ForceRefresh()
 end
 
 -- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#Shutdown
-function widget:Shutdown()
-    if WG['options'] ~= nil then
-        WG['options'].removeOptions(map(OPTION_SPECS, GetOptionId))
-    end
-    DebugLog(widgetName .. " widget disabled")
-end
+function widget:Shutdown() DebugLog(widgetName .. " widget disabled") end
 
 -- https://beyond-all-reason.github.io/spring/ldoc/modules/LuaHandle.html#Update
 function widget:GameFrame() CheckIfComBeingRepaired() end
