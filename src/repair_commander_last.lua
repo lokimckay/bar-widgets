@@ -121,7 +121,7 @@ local function GetDamagedUnit(repairerID, x, z, radius)
         local isDead = spGetUnitIsDead(uID)
         local uDefID = spGetUnitDefID(uID)
         local uDef = UnitDefs[uDefID]
-        local isCom = uDef.customParams.iscommander
+        local isCom = uDef and uDef.customParams.iscommander or false
         local repairable = uDef.repairable
         if inRange and isMyTeam and repairable and (not isDead) and (not isSelf) and
             (not isCom) then
