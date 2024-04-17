@@ -49,7 +49,7 @@ local chobbyInterface
 -- Debugging
 local logPrefix = "[SDR]: "
 local widgetName = "Scuttle decloak range"
-local debugMode = true -- enable to print debugging messages to the console
+local debugMode = false -- enable to print debugging messages to the console
 -- Prints a message to the console if debugMode is enabled
 local function DebugLog(message)
     if debugMode then Spring.Echo(logPrefix .. tostring(message)) end
