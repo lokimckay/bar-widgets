@@ -380,10 +380,10 @@ unbindkeyset       sc_t
 bind           Any+sc_t  repeat
 
 unbindkeyset       sc_`
-bind               sc_`  select AllMap+_Builder_Idle+_ClearSelection_SelectOne+
+bind               sc_`  select AllMap+_Builder_Idle+_ClearSelection_SelectOne+ // Select idle con
 
 unbindkeyset  Ctrl+sc_s
-bind          Ctrl+sc_s  select AllMap+_ManualFireUnit_Not_IdMatches_cordecom_Not_IdMatches_armdecom_Not_IdMatches_armthor+_ClearSelection_SelectOne+
+bind          Ctrl+sc_s  select AllMap+_ManualFireUnit_Not_IdMatches_cordecom_Not_IdMatches_armdecom_Not_IdMatches_armthor+_ClearSelection_SelectOne+ // Select commander
 
 unbindkeyset Shift+sc_`
 bind         Shift+sc_`  LastMsgPos
@@ -392,15 +392,27 @@ unbindkeyset       sc_b
 bind               sc_b  drawinmap
 
 unbindkeyset  Ctrl+sc_c
-bind          Ctrl+sc_c  select Visible+_InPrevSel+_ClearSelection_SelectAll+
+bind          Ctrl+sc_c  select Visible+_InPrevSel+_ClearSelection_SelectAll+ // Select all units of type on screen
+
+unbindkeyset  Ctrl+sc_x
+bind          Ctrl+sc_x  select AllMap+_InPrevSel_Not_InHotkeyGroup+_SelectAll+ // Select all units of type not in hotkey group
 
 unbindkeyset  Ctrl+sc_e
 unbindkeyset  Ctrl+sc_r
-bind          Ctrl+sc_e  firestate 0
-bind          Ctrl+sc_r  firestate 2
+bind          Ctrl+sc_e  firestate 0 // Hold fire
+bind          Ctrl+sc_r  firestate 2 // Fire at will
 
 unbindkeyset       sc_n
 bind               sc_n  ShowPathTraversability
+
+unbindkeyset   Alt+sc_r
+unbindkeyset   Alt+sc_q
+bind           Any+sc_e  select PrevSelection+_Not_Builder_Not_Building_Not_NameContain_Commander_Not_Transport_Weapons_Not_RelativeHealth_59+_ClearSelection_SelectAll+ // Select units under 60% health
+bind           Alt+sc_r  select PrevSelection+_Not_Builder_Not_Building_Not_NameContain_Commander_Not_Transport_Weapons_RelativeHealth_60+_ClearSelection_SelectAll+ // Select units over 60% health
+bind           Alt+sc_q  group unset
+
+unbindkeyset      space
+bind          Any+space  commandinsert prepend_between
 
 // -------------- Widgets
 
