@@ -5,7 +5,7 @@ function widget:GetInfo()
         author = "sneyed",
         license = "GNU GPL, v2 or later",
         layer = 0,
-        enabled = true -- loaded by default
+        enabled = true
     }
 end
 
@@ -15,12 +15,13 @@ end
 -- Config
 --------------------------------------------------------------------------------
 
-local onlyDrawRangeWhenSelected = true
-local fadeOnCameraDistance = true
+local fadeOnZoom = true
 local showLineGlow = true -- a thicker but faint 2nd line will be drawn underneath
 local opacity = 1.3
 local fade = 1.2 -- lower value: fades out sooner
 local circleDivs = 64 -- detail of range circle
+local decloakCol = {1, .6, .3} -- orange
+local selfDCol = {1, 0, 0} -- red
 
 ---------------------------------------------------------------------
 -- Shouldn't need to edit past this point
@@ -34,22 +35,15 @@ local glDrawGroundCircle = gl.DrawGroundCircle
 
 -- Spring functions
 local spGetUnitDefID = Spring.GetUnitDefID
-local spGetAllUnits = Spring.GetAllUnits
 local spGetCameraPosition = Spring.GetCameraPosition
-local spValidUnitID = Spring.ValidUnitID
 local spGetUnitPosition = Spring.GetUnitPosition
 local spIsSphereInView = Spring.IsSphereInView
-local spIsUnitSelected = Spring.IsUnitSelected
-local spGetMyTeamID = Spring.GetMyTeamID
-local spGetMyPlayerID = Spring.GetMyPlayerID
-local spGetSpectatingState = Spring.GetSpectatingState
+local spGetUnitIsCloaked = Spring.GetUnitIsCloaked
 
 -- State
+local selectedUnits = {}
 local scuttles = {}
 local isScuttle = {}
-local spec, fullview = Spring.GetSpectatingState()
-local myTeamID = spGetMyTeamID()
-local myPlayerID = Spring.GetMyPlayerID()
 local chobbyInterface
 
 -- Debugging
@@ -76,62 +70,35 @@ function AddScuttle(unitID, unitDefID)
     scuttles[unitID] = {data[1], data[2]} -- decloakdistance, selfdblastradius
 end
 
-function ReloadUnits()
+function DrawRanges(unitID, x, y, z, props, thickness, alpha)
+    local decloakRange = props[1]
+    local selfDRadius = props[2]
+    local isCloaked = spGetUnitIsCloaked(unitID)
+    local drawDecloak = isCloaked and decloakRange > 0
+    local drawSelfD = selfDRadius > 0
+    if drawDecloak or drawSelfD then glLineWidth(thickness) end
+    if drawDecloak then DrawCircle(x, y, z, decloakRange, decloakCol, alpha) end
+    if drawSelfD then DrawCircle(x, y, z, selfDRadius, selfDCol, alpha) end
+end
+
+function DrawCircle(x, y, z, radius, rgb, alpha)
+    glColor(rgb[1], rgb[2], rgb[3], alpha * opacity)
+    glDrawGroundCircle(x, y, z, radius, circleDivs)
+end
+
+function widget:Initialize() DebugLog(widgetName .. " widget enabled") end
+
+function widget:SelectionChanged(selection)
+    if selection == selectedUnits then return end
+    selectedUnits = selection
     scuttles = {}
-    local visibleUnits = spGetAllUnits()
-    if visibleUnits ~= nil then
-        for i = 1, #visibleUnits do
-            local unitID = visibleUnits[i]
-            local unitDefID = spGetUnitDefID(unitID)
-            if isScuttle[unitDefID] then
-                AddScuttle(unitID, unitDefID)
-            end
-        end
+    if selection == nil then return end
+    if not selection[1] then return end
+    for i, unitID in pairs(selection) do
+        local uDefID = spGetUnitDefID(unitID)
+        local unitDef = UnitDefs[uDefID]
+        if isScuttle[uDefID] then AddScuttle(unitID, uDefID) end
     end
-end
-
-function widget:Initialize()
-    DebugLog(widgetName .. " widget enabled")
-    ReloadUnits()
-end
-
-function widget:PlayerChanged(playerID)
-    local prevTeamID = myTeamID
-    local prevFullview = fullview
-    myTeamID = spGetMyTeamID()
-    myPlayerID = spGetMyPlayerID()
-    spec, fullview = spGetSpectatingState()
-    if playerID == myPlayerID and
-        (fullview ~= prevFullview or myTeamID ~= prevTeamID) then
-        ReloadUnits()
-    end
-end
-
-function widget:UnitCreated(unitID, unitDefID, teamID, builderID)
-    if not spValidUnitID(unitID) then return end
-    if isScuttle[unitDefID] then AddScuttle(unitID, unitDefID) end
-end
-
-function widget:UnitFinished(unitID, unitDefID, unitTeam)
-    if isScuttle[unitDefID] then AddScuttle(unitID, unitDefID) end
-end
-
-function widget:UnitTaken(unitID, unitDefID, unitTeam, newTeam)
-    if isScuttle[unitDefID] then AddScuttle(unitID, unitDefID) end
-end
-
-function widget:UnitGiven(unitID, unitDefID, unitTeam, oldTeam)
-    if isScuttle[unitDefID] then AddScuttle(unitID, unitDefID) end
-end
-
-function widget:UnitEnteredLos(unitID, unitTeam, allyTeam, unitDefID)
-    if not fullview and isScuttle[unitDefID] then
-        AddScuttle(unitID, unitDefID)
-    end
-end
-
-function widget:UnitLeftLos(unitID, unitDefID, unitTeam)
-    if not fullview then if scuttles[unitID] then scuttles[unitID] = nil end end
 end
 
 function widget:UnitDestroyed(unitID, unitDefID, unitTeam)
@@ -147,53 +114,24 @@ end
 function widget:DrawWorldPreUnit()
     if chobbyInterface then return end
     if Spring.IsGUIHidden() then return end
-
     local camX, camY, camZ = spGetCameraPosition()
-
     glDepthTest(true)
-
-    for unitID, prop in pairs(scuttles) do
-        local decloakRange = prop[1]
-        local selfDRadius = prop[2]
+    for unitID, props in pairs(scuttles) do
+        local decloakRange = props[1]
+        local selfDRadius = props[2]
         local x, y, z = spGetUnitPosition(unitID)
-        if ((onlyDrawRangeWhenSelected and spIsUnitSelected(unitID)) or
-            onlyDrawRangeWhenSelected == false) and
-            spIsSphereInView(x, y, z, math.max(decloakRange, selfDRadius)) then
-            local camDistance = math.diag(camX - x, camY - y, camZ - z)
-
-            local lineWidthMinus = (camDistance / 2000)
-            if lineWidthMinus > 2 then lineWidthMinus = 2 end
-            local lineOpacityMultiplier = 0.9
-            if fadeOnCameraDistance then
-                lineOpacityMultiplier = (1100 / camDistance) * fade
-                if lineOpacityMultiplier > 1 then
-                    lineOpacityMultiplier = 1
-                end
-            end
-            if lineOpacityMultiplier > 0.15 then
+        if spIsSphereInView(x, y, z, math.max(decloakRange, selfDRadius)) then
+            local camDist = math.diag(camX - x, camY - y, camZ - z)
+            local lineThickness = 2.2 - math.min(camDist / 2000, 2)
+            local fadedOpacity = math.min((1100 / camDist) * fade, 1)
+            local alpha = fadeOnZoom and fadedOpacity or 0.9
+            if alpha > 0.15 then
                 if showLineGlow then
-                    glLineWidth(10)
-                    if decloakRange > 0 then
-                        glColor(1, .6, .3, .03 * lineOpacityMultiplier * opacity)
-                        glDrawGroundCircle(x, y, z, decloakRange, circleDivs)
-                    end
-                    if selfDRadius > 0 then
-                        glColor(1, 0, 0, .03 * lineOpacityMultiplier * opacity)
-                        glDrawGroundCircle(x, y, z, selfDRadius, circleDivs)
-                    end
+                    DrawRanges(unitID, x, y, z, props, 10, 0.03 * alpha)
                 end
-                glLineWidth(2.2 - lineWidthMinus)
-                if decloakRange > 0 then
-                    glColor(1, .6, .3, .44 * lineOpacityMultiplier * opacity)
-                    glDrawGroundCircle(x, y, z, decloakRange, circleDivs)
-                end
-                if selfDRadius > 0 then
-                    glColor(1, 0, 0, .44 * lineOpacityMultiplier * opacity)
-                    glDrawGroundCircle(x, y, z, selfDRadius, circleDivs)
-                end
+                DrawRanges(unitID, x, y, z, props, lineThickness, 0.44 * alpha)
             end
         end
     end
-
     glDepthTest(false)
 end
