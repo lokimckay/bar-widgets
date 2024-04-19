@@ -98,7 +98,7 @@ local function GetCommanders()
             local unitID = teamUnits[j]
             local unitDefID = spGetUnitDefID(unitID)
             local unitDef = UnitDefs[unitDefID]
-            if unitDef.customParams.iscommander then
+            if unitDef.customParams and unitDef.customParams.iscommander then
                 commanders[unitID] = true
                 autoHeals[unitID] = unitDef.autoHeal
             end
