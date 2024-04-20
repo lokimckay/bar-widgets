@@ -376,6 +376,11 @@ unbindkeyset       sc_y
 bind               sc_y  capture
 bind               sc_v  resurrect
 
+bind               sc_v buildunit_cormine2 // medium mines
+bind               sc_v buildunit_cormine4 // commando mines
+bind               sc_c buildunit_armdrag  // dragons teeth
+bind               sc_c buildunit_cordrag  // dragons teeth
+
 unbindkeyset       sc_t
 bind           Any+sc_t  repeat
 
